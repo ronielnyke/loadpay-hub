@@ -1,0 +1,3 @@
+# Lets Firebase Google sign-in run under lambaconnect.netlify.app
+/__/auth/*      https://loadpay-hub.firebaseapp.com/__/auth/:splat      200
+/__/firebase/*  https://loadpay-hub.firebaseapp.com/__/firebase/:splat  200

@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+    function activated() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/activations/$(request.auth.uid))
+        && get(/databases/$(database)/documents/activations/$(request.auth.uid)).data.activated == true;
+    }
+    function isAdmin() {
+      return verified() && request.auth.token.email in ['ronielnyke@gmail.com'];
+    }
+
+    match /transactions/{txId} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if (isAdmin() || activated())
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status in ['Pending', 'Awaiting Payment'];
+      allow update: if isAdmin()
+        || (activated()
+            && resource.data.uid == request.auth.uid
+            && resource.data.status == 'Awaiting Payment'
+            && request.resource.data.status == 'Pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ref', 'status', 'updated']))
+        || (signedIn()
+            && resource.data.uid == request.auth.uid
+            && resource.data.status != 'Awaiting Payment'
+            && request.resource.data.hidden == true
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden']));
+      allow delete: if isAdmin();
+    }
+
+    match /activations/{uid} {
+      allow read: if signedIn() && (uid == request.auth.uid || isAdmin());
+      allow create: if signedIn() && uid == request.auth.uid && request.resource.data.activated == false;
+      allow update: if signedIn() && uid == request.auth.uid
+        && resource.data.activated == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'hash', 'exp', 'ts', 'activated', 'activatedAt']);
+      allow delete: if false;
+    }
+
+    // one document per issued key (document id = SHA-256 of the key) -> a key can never be issued twice
+    match /activationKeys/{keyHash} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow get: if signedIn() && resource.data.uid == request.auth.uid;
+      allow list, update: if false;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // EmailJS public settings are readable before login so registration can send the activation key
+    match /settings/email {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
