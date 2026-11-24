@@ -1,4 +1,5 @@
 [build]
+  command = "node scripts/generate-version.js"
   publish = "."
 
 [build.environment]

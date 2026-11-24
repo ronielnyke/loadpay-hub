@@ -130,6 +130,7 @@ Customers are sent to PayMongo Checkout, pay there, and return to the site. An o
 5. Check: open `https://lambaconnect.netlify.app/.netlify/functions/pm-status` - it must show `{"ok":true,...}`. This checks that the required environment variables are present; it does not verify account activation or that each payment method is enabled. Complete a small test-mode payment before switching to live. Then Dashboard > Payments shows **Connected**.
 If it is not connected, the app falls back to the manual GCash/Maya number from Dashboard > Payments.
 Cash is an in-person counter payment, not an online gateway method. Cash orders stay pending until the operator confirms the money was received in the Dashboard. Never confirm an order based only on the customer's claim or screenshot.
+Netlify generates the displayed app version from the Git commit count during each build (`1.0.<commit count>`). A new committed change therefore gets a higher patch version when deployed. The version shown in the footer is a fallback when running without a Netlify build.
 
 ## 10. Owner Dashboard
 Only Roniel Nyke Gonzales (ronielnyke@gmail.com, Google sign-in) can open it. **Overview** shows every order from every device live (new orders pop up with a sound). **Prices & Catalog** edits data promos, load amounts, billers, service fees and which payment methods customers see. Everything is stored in Firestore, so all devices on the same link use the same prices.
