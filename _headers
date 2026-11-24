@@ -2,3 +2,7 @@
   Cache-Control: public, max-age=300
 /js/*
   Cache-Control: public, max-age=300
+/js/version.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/site.webmanifest
+  Cache-Control: no-cache, must-revalidate
