@@ -77,16 +77,16 @@ function startWatch() {
 function stopWatch() { if (S.unsub) { S.unsub(); S.unsub = null; } }
 function beep() { try { const A = window.AudioContext || window.webkitAudioContext, c = new A(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.setValueAtTime(.08, c.currentTime); g.gain.exponentialRampToValueAtTime(.0001, c.currentTime + .4); o.start(); o.stop(c.currentTime + .4); } catch (e) {} }
 
-/* ----- PayMongo (via Netlify Functions) ----- */
+/* ----- PayMongo server API ----- */
 async function fn(name, body) {
   const t = await auth.currentUser.getIdToken();
-  const r = await TO(fetch('/.netlify/functions/' + name, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...body, idToken:t})}), 25000);
+  const r = await TO(fetch('/api/' + name, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...body, idToken:t})}), 25000);
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'Server error (' + r.status + ')');
   return j;
 }
 async function checkPM() {
-  try { const r = await TO(fetch('/.netlify/functions/pm-status'), 5000), j = await r.json(); PM.ok = !!j.ok; PM.mode = j.mode || 'test'; } catch (e) { PM.ok = false; }
+  try { const r = await TO(fetch('/api/pm-status'), 5000), j = await r.json(); PM.ok = !!j.ok; PM.mode = j.mode || 'test'; } catch (e) { PM.ok = false; }
 }
 async function paidMail(t) {
   const m = await sendReceipt(t, `LoadPay Hub payment confirmed \u2013 ${t.id}`);
