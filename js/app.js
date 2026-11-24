@@ -113,7 +113,6 @@ function readCat() {
   if (g('#ceLoad')) E.loadAmounts = [...new Set((g('#ceLoad').value || '').split(/[,\s]+/).map(Number).filter(x => x >= 1 && x <= 1000))].sort((x, y) => x - y);
   Object.keys(CATS).forEach(k => { const t = g('#ceB-' + k.replace(/\W/g, '')); if (t) E.billers[k] = t.value.split('\n').map(s => s.trim()).filter(Boolean); });
   if (g('#cfL')) E.fees = {load:Math.max(0, +g('#cfL').value || 0), data:Math.max(0, +g('#cfD').value || 0), bill:Math.max(0, +g('#cfB').value || 0)};
-  ['Cash', 'GCash', 'Maya', 'GrabPay', 'Card'].forEach(m => { const c = g('#cm-' + m); if (c) E.methods[m] = !!c.checked; });
 }
 function drawCatEd() {
   const el = $('#catEd'); if (!el || !S.E) return;
@@ -126,7 +125,6 @@ ${list.map((p, i) => `<div class="row g-2 mb-2 align-items-center"><div class="c
 <div class="stat mb-3"><b><i class="bi bi-phone"></i> Load Amounts (\u20B1, separated by commas)</b><input id="ceLoad" class="form-control mt-2" value="${esc(E.loadAmounts.join(', '))}"></div>
 <div class="stat mb-3"><b><i class="bi bi-receipt"></i> Billers (one per line)</b><div class="row g-2 mt-1">${Object.keys(CATS).map(k => `<div class="col-md-6"><label class="lbl mt-0">${k}</label><textarea id="ceB-${k.replace(/\W/g, '')}" rows="4" class="form-control">${esc((E.billers[k] || CATS[k].b).join('\n'))}</textarea></div>`).join('')}</div></div>
 <div class="stat mb-3"><b><i class="bi bi-cash-coin"></i> Service fee added to each order (\u20B1)</b><div class="row g-2 mt-1"><div class="col-4"><label class="lbl mt-0">Load</label><input id="cfL" type="number" min="0" class="form-control" value="${E.fees.load}"></div><div class="col-4"><label class="lbl mt-0">Data</label><input id="cfD" type="number" min="0" class="form-control" value="${E.fees.data}"></div><div class="col-4"><label class="lbl mt-0">Bills</label><input id="cfB" type="number" min="0" class="form-control" value="${E.fees.bill}"></div></div></div>
-<div class="stat mb-3"><b><i class="bi bi-credit-card"></i> Payment methods customers can use</b><div class="d-flex flex-wrap gap-3 mt-2">${['Cash', 'GCash', 'Maya', 'GrabPay', 'Card'].map(m => `<label class="form-check"><input class="form-check-input" type="checkbox" id="cm-${m}" ${E.methods[m] !== false ? 'checked' : ''}> <span class="form-check-label">${esc(paymentLabel(m))}</span></label>`).join('')}</div></div>
 <button class="btn btn-primary btn-lg" onclick="LP.saveCat()"><i class="bi bi-save"></i> Save Prices & Catalog</button>`;
 }
 const IN_APP = /FBAN|FBAV|FB_IAB|FBIOS|Messenger|Instagram|Line\/|TikTok|Snapchat|MicroMessenger|Twitter|; wv\)/i.test((typeof navigator !== 'undefined' && navigator.userAgent) || '');
@@ -151,7 +149,7 @@ async function loadPay() {
       d = s1.exists ? s1.data() : null; c = s2.exists ? s2.data() : null;
     } else { d = JSON.parse(localStorage.getItem('lph_pay') || 'null'); c = JSON.parse(localStorage.getItem('lph_cat') || 'null'); }
     if (d) { Object.assign(PAY.gcash, d.gcash || {}); Object.assign(PAY.maya, d.maya || {}); }
-    if (c) ['loadAmounts', 'promos', 'billers', 'fees', 'methods'].forEach(k => { if (c[k]) CAT[k] = c[k]; });
+    if (c) ['loadAmounts', 'promos', 'billers', 'fees'].forEach(k => { if (c[k]) CAT[k] = c[k]; });
     S.dbErr = null; showDbWarn();
   } catch (e) { console.error('Settings load failed', e); S.dbErr = diag(e) + ' [settings: ' + (e.code || 'error') + ']'; showDbWarn(); }
   if (fbOn) checkPM();
@@ -202,7 +200,7 @@ const TILES = [['Buy Load','phone-fill','load'],['Data Promos','wifi','data'],['
 const WHY = [['phone','Multi-Network Load','Smart, Globe, DITO, TNT, Sun'],['wifi','Data Promos','3G, 4G and 5G promos'],['receipt','Bills Payment','Electricity, water, internet and more'],['wallet2','E-Wallet','GCash and Maya cash-in'],['bank2','Government Fees','SSS, PhilHealth, Pag-IBIG'],['clock-history','24/7 Access','Pay anytime, anywhere'],['shield-check','Secure & Reliable','Every transaction is recorded'],['people','Income Opportunity','Agent / franchise model']];
 const VIEW = {load:'load', data:'data', bill:'bills'};
 const newFlow = (type, cat) => ({type, net:'smart', amount:0, mobile:'', promo:null, cat:cat || null, biller:null, account:'', name:'', method:'Cash', ref:''});
-const DEF_CAT = {loadAmounts:[10,20,30,50,100,200,300,500], promos:promosFrom(REAL), billers:Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, [...v.b]])), fees:{load:0, data:0, bill:0}, methods:{Cash:true, GCash:true, Maya:true, GrabPay:true, Card:true}};
+const DEF_CAT = {loadAmounts:[10,20,30,50,100,200,300,500], promos:promosFrom(REAL), billers:Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, [...v.b]])), fees:{load:0, data:0, bill:0}};
 const CAT = JSON.parse(JSON.stringify(DEF_CAT));
 const promos = id => CAT.promos[id] || [];
 const billersOf = k => (CAT.billers && CAT.billers[k]) || CATS[k].b;
@@ -287,14 +285,14 @@ function info() {
   r.fee = +(CAT.fees[r.fk] || 0); r.amount = r.base + r.fee; return r;
 }
 function methodsList() {
-  const i = info(), M = [], on = k => CAT.methods[k] !== false;
-  if (on('Cash')) M.push(['Cash', 'cash-coin', 'Pay at the counter', true]);
-  if (PM.ok) Object.keys(ONLINE).forEach(k => { if (on(k)) M.push([k, ONLINE[k][1], ONLINE[k][2], i.amount >= 20, 'Minimum \u20B120 for online payment']); });
+  const i = info(), M = [];
+  M.push(['Cash', 'cash-coin', 'Pay at the counter', true]);
+  if (PM.ok) Object.keys(ONLINE).forEach(k => M.push([k, ONLINE[k][1], ONLINE[k][2], i.amount >= 20, 'Minimum \u20B120 for online payment']));
   else {
-    if (on('GCash')) M.push(['GCash', 'phone-fill', 'Pay with the GCash app', okPhone(PAY.gcash.number), 'Not set up yet by the operator']);
-    if (on('Maya')) M.push(['Maya', 'credit-card-2-front', 'Pay with Maya', okPhone(PAY.maya.number), 'Not set up yet by the operator']);
-    if (on('GrabPay')) M.push(['GrabPay', ONLINE.GrabPay[1], ONLINE.GrabPay[2], false, 'PayMongo is not connected']);
-    if (on('Card')) M.push(['Card', ONLINE.Card[1], ONLINE.Card[2], false, 'PayMongo is not connected']);
+    M.push(['GCash', 'phone-fill', 'Pay with the GCash app', okPhone(PAY.gcash.number), 'Not set up yet by the operator']);
+    M.push(['Maya', 'credit-card-2-front', 'Pay with Maya', okPhone(PAY.maya.number), 'Not set up yet by the operator']);
+    M.push(['GrabPay', ONLINE.GrabPay[1], ONLINE.GrabPay[2], false, 'PayMongo is not connected']);
+    M.push(['Card', ONLINE.Card[1], ONLINE.Card[2], false, 'PayMongo is not connected']);
   }
   return M;
 }
@@ -747,17 +745,16 @@ window.LP = {
     readCat(); const E = S.E, promosOut = {};
     if (!E.loadAmounts.length) return toast('Enter at least one load amount (\u20B11 to \u20B11,000).', 'danger');
     if (Object.keys(CATS).some(k => !(E.billers[k] || []).length)) return toast('Each bill category needs at least one biller.', 'danger');
-    if (!Object.values(E.methods).some(Boolean)) return toast('Enable at least one payment method.', 'danger');
     for (const n of NETS) {
       const l = (E.promos[n.id] || []).filter(p => String(p.name).trim());
       if (l.some(p => !(+p.price > 0))) return toast(`Every ${n.name} promo needs a price above 0.`, 'danger');
       promosOut[n.id] = l.map(p => ({name:String(p.name).trim(), sub:String(p.sub || '').trim(), price:+p.price, code:String(p.code || '').trim()}));
     }
-    const d = {loadAmounts:E.loadAmounts, billers:E.billers, fees:E.fees, methods:E.methods, promos:promosOut, updated:Date.now()};
+    const d = {loadAmounts:E.loadAmounts, billers:E.billers, fees:E.fees, promos:promosOut, updated:Date.now()};
     busy(true, 'Saving catalog\u2026');
     try {
       if (db) await TO(db.collection('settings').doc('catalog').set(d)); else localStorage.setItem('lph_cat', JSON.stringify(d));
-      ['loadAmounts', 'billers', 'fees', 'methods', 'promos'].forEach(k => { CAT[k] = d[k]; }); S.E = JSON.parse(JSON.stringify(CAT));
+      ['loadAmounts', 'billers', 'fees', 'promos'].forEach(k => { CAT[k] = d[k]; }); S.E = JSON.parse(JSON.stringify(CAT));
       toast('Saved! All devices will now use the new prices and settings.', 'success');
     } catch (e) { toast(diag(e), 'danger'); }
     busy(false); drawCatEd();

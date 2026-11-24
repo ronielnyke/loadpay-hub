@@ -131,7 +131,7 @@ Cash is an in-person counter payment, not an online gateway method. Cash orders 
 The website footer and installed-app manifest show version `2.4.30` at the configured Git baseline. Each new Git commit increases the patch version automatically during the Netlify build (for example, the next commit builds as `2.4.31`). The footer and manifest retain `2.4.30` as a fallback without a Netlify build. Version assets use revalidation headers so other users can receive the updated version after a deployment.
 
 ## 10. Owner Dashboard
-Only Roniel Nyke Gonzales (ronielnyke@gmail.com, Google sign-in) can open it. **Overview** shows every order from every device live (new orders pop up with a sound). **Prices & Catalog** edits data promos, load amounts, billers, service fees and which payment methods customers see. Everything is stored in Firestore, so all devices on the same link use the same prices.
+Only Roniel Nyke Gonzales (ronielnyke@gmail.com, Google sign-in) can open it. **Overview** shows every order from every device live (new orders pop up with a sound). **Prices & Catalog** edits data promos, load amounts, billers and service fees. Customers always see Cash, GCash, Maya, GrabPay and Visa / Mastercard; online methods are enabled only when PayMongo is connected, and offline cash/manual orders require operator confirmation.
 
 ## 11. Logo
 Your logo (`logo.png` you sent) was cropped to a clean circle and exported to `img/`: `logo-512.png`, `logo-256.png`, `logo-192.png`, favicons, `apple-touch-icon.png`, `icon-maskable-512.png` and `og-image.png` (link preview). It shows in the loading screen, login, navbar, home hero, footer, browser tab, phone home screen (site.webmanifest) and the receipt email.
