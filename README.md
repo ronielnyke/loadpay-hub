@@ -119,16 +119,17 @@ Owner/Admin: Roniel Nyke Gonzales (ronielnyke@gmail.com). Sign in with Google to
 Activation keys are random (system-generated), 8 characters, unique across all accounts, and only work for the account they were emailed to.
 
 ## 9. Online payments with PayMongo (GCash, Maya, GrabPay, Card)
-Customers are sent to the PayMongo checkout (GCash opens their GCash app), pay there, and come back; the order is verified with PayMongo and marked **Success** automatically. Prices are taken from the order saved in your database, and PayMongo's minimum is P20.
-1. Create a PayMongo account (paymongo.com) and copy your **Secret key** (`sk_test_...` for testing, `sk_live_...` after activation). Activate GCash / Maya / GrabPay / Card in PayMongo > Settings > Payment methods.
+Customers are sent to PayMongo Checkout, pay there, and return to the site. An order is marked **Success** only after the backend confirms the checkout is paid and its PHP amount and order reference match. PayMongo's minimum is P20. Card checkout can accept Visa and Mastercard when those card types are enabled for your PayMongo account.
+1. Create and activate a PayMongo account (paymongo.com). Use your **Secret key** (`sk_test_...` for testing; use `sk_live_...` only after PayMongo activates your account). Enable GCash / Maya / GrabPay / Card under PayMongo > Settings > Payment methods. Availability depends on your merchant account and PayMongo approval.
 2. Firebase Console > Project settings > **Service accounts** > Generate new private key (downloads a .json file).
 3. Netlify > Site configuration > **Environment variables**, add:
    - `PAYMONGO_SECRET_KEY` = your secret key
    - `FIREBASE_SERVICE_ACCOUNT` = the full contents of the .json file
    - `SITE_URL` = `https://lambaconnect.netlify.app`
 4. Deploy this folder (it contains `netlify/functions`). Drag-and-drop works for the folder; Git or the Netlify CLI also work. Redeploy after changing environment variables.
-5. Check: open `https://lambaconnect.netlify.app/.netlify/functions/pm-status` - it must show `{"ok":true,...}`. Then Dashboard > Payments shows **Connected**.
+5. Check: open `https://lambaconnect.netlify.app/.netlify/functions/pm-status` - it must show `{"ok":true,...}`. This checks that the required environment variables are present; it does not verify account activation or that each payment method is enabled. Complete a small test-mode payment before switching to live. Then Dashboard > Payments shows **Connected**.
 If it is not connected, the app falls back to the manual GCash/Maya number from Dashboard > Payments.
+Cash is an in-person counter payment, not an online gateway method. Cash orders stay pending until the operator confirms the money was received in the Dashboard. Never confirm an order based only on the customer's claim or screenshot.
 
 ## 10. Owner Dashboard
 Only Roniel Nyke Gonzales (ronielnyke@gmail.com, Google sign-in) can open it. **Overview** shows every order from every device live (new orders pop up with a sound). **Prices & Catalog** edits data promos, load amounts, billers, service fees and which payment methods customers see. Everything is stored in Firestore, so all devices on the same link use the same prices.
