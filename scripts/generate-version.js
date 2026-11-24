@@ -5,16 +5,22 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
-const count = execFileSync('git', ['rev-list', '--count', 'HEAD'], {
+const commitCount = execFileSync('git', ['rev-list', '--count', 'HEAD'], {
   cwd: root,
   encoding: 'utf8'
 }).trim();
 
-if (!/^[1-9]\d*$/.test(count)) {
+if (!/^[1-9]\d*$/.test(commitCount)) {
   throw new Error('Could not determine the Git commit count for the app version.');
 }
 
-const version = `1.0.${count}`;
+const baseline = { major: 2, minor: 4, patch: 30, commitCount: 5 };
+const commitsSinceBaseline = Number(commitCount) - baseline.commitCount;
+if (!Number.isSafeInteger(commitsSinceBaseline) || commitsSinceBaseline < 0) {
+  throw new Error('The Git history is older than the configured app version baseline.');
+}
+
+const version = `${baseline.major}.${baseline.minor}.${baseline.patch + commitsSinceBaseline}`;
 const versionFile = path.join(root, 'js', 'version.js');
 const contents = `window.APP_VERSION = '${version}';\nconst versionLabel = document.getElementById('app-version');\nif (versionLabel) versionLabel.textContent = window.APP_VERSION;\n`;
 
