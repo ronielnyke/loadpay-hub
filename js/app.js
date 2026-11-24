@@ -80,13 +80,13 @@ function beep() { try { const A = window.AudioContext || window.webkitAudioConte
 /* ----- PayMongo server API ----- */
 async function fn(name, body) {
   const t = await auth.currentUser.getIdToken();
-  const r = await TO(fetch('/api/' + name, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...body, idToken:t})}), 25000);
+  const r = await TO(fetch('/.netlify/functions/' + name, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...body, idToken:t})}), 25000);
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'Server error (' + r.status + ')');
   return j;
 }
 async function checkPM() {
-  try { const r = await TO(fetch('/api/pm-status'), 5000), j = await r.json(); PM.ok = !!j.ok; PM.mode = j.mode || 'test'; } catch (e) { PM.ok = false; }
+  try { const r = await TO(fetch('/.netlify/functions/pm-status'), 5000), j = await r.json(); PM.ok = !!j.ok; PM.mode = j.mode || 'test'; } catch (e) { PM.ok = false; }
 }
 async function paidMail(t) {
   const m = await sendReceipt(t, `LoadPay Hub payment confirmed \u2013 ${t.id}`);
