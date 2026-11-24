@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": ".",
     "ignore": [
@@ -6,6 +9,7 @@
       "README.md",
       "**/.*",
       "**/node_modules/**",
+      "functions/**",
       "firestore.rules"
     ]
   },

@@ -20,7 +20,7 @@ test('confirms a paid PHP checkout with the exact order reference and amount', (
   assert.equal(isConfirmedCheckout(checkout(), tx), true);
 });
 
-test('does not confirm unpaid, misreferenced, or incorrectly charged checkouts', () => {
+test('rejects unpaid, misreferenced, underpaid, and wrong-currency checkouts', () => {
   assert.equal(isConfirmedCheckout(checkout({ status: 'active' }), tx), false);
   assert.equal(isConfirmedCheckout(checkout({ reference_number: 'ANOTHER-ORDER' }), tx), false);
   assert.equal(isConfirmedCheckout(checkout({

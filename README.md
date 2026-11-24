@@ -121,14 +121,12 @@ Activation keys are random (system-generated), 8 characters, unique across all a
 ## 9. Online payments with PayMongo (GCash, Maya, GrabPay, Card)
 Customers are sent to PayMongo Checkout, pay there, and return to the site. An order is marked **Success** only after the backend confirms the checkout is paid and its PHP amount and order reference match. PayMongo's minimum is P20. Card checkout can accept Visa and Mastercard when those card types are enabled for your PayMongo account.
 1. Create and activate a PayMongo account (paymongo.com). Use your **Secret key** (`sk_test_...` for testing; use `sk_live_...` only after PayMongo activates your account). Enable GCash / Maya / GrabPay / Card under PayMongo > Settings > Payment methods. Availability depends on your merchant account and PayMongo approval.
-2. Firebase Console > Project settings > **Service accounts** > Generate new private key (downloads a .json file).
-3. Netlify > Site configuration > **Environment variables**, add:
-   - `PAYMONGO_SECRET_KEY` = your secret key
-   - `FIREBASE_SERVICE_ACCOUNT` = the full contents of the .json file
-   - `SITE_URL` = `https://lambaconnect.netlify.app`
-4. Deploy this folder (it contains `netlify/functions`). Drag-and-drop works for the folder; Git or the Netlify CLI also work. Redeploy after changing environment variables.
-5. Check: open `https://lambaconnect.netlify.app/.netlify/functions/pm-status` - it must show `{"ok":true,...}`. This checks that the required environment variables are present; it does not verify account activation or that each payment method is enabled. Complete a small test-mode payment before switching to live. Then Dashboard > Payments shows **Connected**.
-If it is not connected, the app falls back to the manual GCash/Maya number from Dashboard > Payments.
+2. Install Firebase Functions dependencies: `npm --prefix functions install`.
+3. In a terminal, run `firebase login`, then store the PayMongo key in Firebase Secret Manager: `firebase functions:secrets:set PAYMONGO_SECRET_KEY --project loadpay-hub`. Enter the key at the secure prompt; do not put it in `js/config.js` or commit it.
+4. Deploy the Firebase Functions backend: `firebase deploy --only functions --project loadpay-hub`. The functions use Firebase's runtime identity to access Firestore; **do not create or set `FIREBASE_SERVICE_ACCOUNT`**. Cloud Functions/Secret Manager may require the Firebase project to use the Blaze billing plan.
+5. Redeploy the static site to Netlify so its payment-function proxy is live. Check `https://lambaconnect.netlify.app/.netlify/functions/pm-status` for `{"ok":true,...}`. This checks that a PayMongo key is configured; it does not confirm merchant activation or enabled methods. Complete a test-mode payment before switching to live. Then Dashboard > Payments should show **Connected**.
+If the function logs show Firestore permission errors, grant its runtime service account the **Cloud Datastore User** role (`roles/datastore.user`) in Google Cloud IAM. This is an IAM role for the runtime identity, not a downloaded key or environment variable.
+The PayMongo secret is stored by Firebase Secret Manager, not in Netlify. If online payments are unavailable, check the Firebase Function logs and confirm the methods are enabled in PayMongo.
 Cash is an in-person counter payment, not an online gateway method. Cash orders stay pending until the operator confirms the money was received in the Dashboard. Never confirm an order based only on the customer's claim or screenshot.
 The website footer and installed-app manifest show version `2.4.30` at the configured Git baseline. Each new Git commit increases the patch version automatically during the Netlify build (for example, the next commit builds as `2.4.31`). The footer and manifest retain `2.4.30` as a fallback without a Netlify build. Version assets use revalidation headers so other users can receive the updated version after a deployment.
 
