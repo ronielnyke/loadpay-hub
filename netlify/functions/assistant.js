@@ -6,6 +6,9 @@ Use your general knowledge to answer what you can, but be honest about uncertain
 You cannot access customer accounts, transactions, order status, payment-provider systems, or the website operator's private information, and you cannot place orders, take payments, deliver load, or issue refunds. Never claim any such action or status was completed. For account-specific requests, explain this limitation and guide the customer to their signed-in account/history screens or the website operator.
 Never ask for passwords, one-time codes, full card details, or payment credentials. Keep answers respectful, safe, and relevant; when a request is outside your knowledge or capability, say so plainly and offer the most useful next step instead of inventing an answer.`;
 
+// Current supported model (gemini-2.0-flash was discontinued, use gemini-3.8-flash)
+const GEMINI_MODEL = (process.env.GEMINI_MODEL || '').trim() || 'gemini-3.8-flash';
+
 const reply = (statusCode, body) => ({
   statusCode,
   headers: {
@@ -15,18 +18,9 @@ const reply = (statusCode, body) => ({
   body: JSON.stringify(body)
 });
 
-/* ── helpers ── */
+// Extract text from either Interactions API or generateContent response shapes
 function extractText(result) {
-  // generateContent response: candidates[0].content.parts[*].text
-  const cands = Array.isArray(result.candidates) ? result.candidates : [];
-  const gcText = cands
-    .flatMap(c => (c && c.content && Array.isArray(c.content.parts)) ? c.content.parts : [])
-    .map(p => (p && typeof p.text === 'string') ? p.text : '')
-    .join('')
-    .trim();
-  if (gcText) return gcText;
-
-  // Interactions API response: steps[*].type==='model_output', content[*].text
+  // Interactions API: steps[*].type === 'model_output', content[*].text
   const stepsText = (result.steps || [])
     .filter(s => s && s.type === 'model_output')
     .flatMap(s => Array.isArray(s.content) ? s.content : [])
@@ -36,32 +30,25 @@ function extractText(result) {
   if (stepsText) return stepsText;
 
   // Interactions API outputs fallback
-  return (result.outputs || [])
+  const outputsText = (result.outputs || [])
     .flatMap(o => Array.isArray(o && o.content) ? o.content : (o && typeof o.text === 'string' ? [o] : []))
+    .map(p => (p && typeof p.text === 'string') ? p.text : '')
+    .join('')
+    .trim();
+  if (outputsText) return outputsText;
+
+  // generateContent response: candidates[0].content.parts[*].text
+  return (result.candidates || [])
+    .flatMap(c => (c && c.content && Array.isArray(c.content.parts)) ? c.content.parts : [])
     .map(p => (p && typeof p.text === 'string') ? p.text : '')
     .join('')
     .trim();
 }
 
-async function callGenerateContent(apiKey, messages, signal) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    signal,
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-      contents: messages,
-      generationConfig: { temperature: 0.4, maxOutputTokens: 1000 }
-    })
-  });
-  return response;
-}
-
+// PRIMARY: Interactions API
+// NOTE: system_instruction MUST be a plain string for the Interactions API (not an object)
 async function callInteractionsAPI(apiKey, messages, signal) {
-  const model = (process.env.GEMINI_MODEL || '').trim() || 'gemini-2.0-flash';
-  const url = 'https://generativelanguage.googleapis.com/v1beta/interactions';
-  const response = await fetch(url, {
+  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -70,14 +57,31 @@ async function callInteractionsAPI(apiKey, messages, signal) {
     },
     signal,
     body: JSON.stringify({
-      model: model,
-      system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+      model: GEMINI_MODEL,
+      system_instruction: SYSTEM_INSTRUCTION,          // plain string — required by Interactions API
       input: messages.map(m => ({
         type: m.role === 'user' ? 'user_input' : 'model_output',
         content: m.parts.map(p => ({ type: 'text', text: p.text }))
       })),
       generation_config: { temperature: 0.4, thinking_level: 'low', max_output_tokens: 1000 },
       store: false
+    })
+  });
+  return response;
+}
+
+// FALLBACK: generateContent API
+// NOTE: system_instruction MUST be an object { parts: [{ text }] } for generateContent
+async function callGenerateContent(apiKey, messages, signal) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] }, // object — required by generateContent
+      contents: messages,
+      generationConfig: { temperature: 0.4, maxOutputTokens: 1000 }
     })
   });
   return response;
@@ -90,9 +94,9 @@ async function handler(event) {
 
   const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
   if (!apiKey) {
-    console.error('Gemini assistant is not configured: GEMINI_API_KEY is missing.');
+    console.error('Gemini assistant: GEMINI_API_KEY is not set.');
     return reply(503, {
-      error: 'AI setup is incomplete: add GEMINI_API_KEY to the Netlify Function environment variables, then redeploy the site.'
+      error: 'AI setup is incomplete: add GEMINI_API_KEY to the Netlify Function environment variables, then redeploy.'
     });
   }
 
@@ -134,58 +138,55 @@ async function handler(event) {
   const timeout = setTimeout(() => controller.abort(), 25000);
 
   try {
-    // ── PRIMARY: generateContent with gemini-2.0-flash (most reliable) ──
+    // ── Try Interactions API first ──
     let response;
-    let usedFallback = false;
+    let triedFallback = false;
 
     try {
-      response = await callGenerateContent(apiKey, messages, controller.signal);
+      response = await callInteractionsAPI(apiKey, messages, controller.signal);
     } catch (fetchErr) {
       if (fetchErr.name === 'AbortError') throw fetchErr;
-      // network error on primary → try Interactions API
-      console.warn('generateContent fetch failed, trying Interactions API:', fetchErr.message);
-      response = await callInteractionsAPI(apiKey, messages, controller.signal);
-      usedFallback = true;
+      console.warn('Interactions API network error, trying generateContent:', fetchErr.message);
+      response = await callGenerateContent(apiKey, messages, controller.signal);
+      triedFallback = true;
     }
 
-    // If primary returned 4xx/5xx, try Interactions API as fallback
-    if (!usedFallback && !response.ok && (response.status === 404 || response.status >= 500)) {
-      console.warn('generateContent returned', response.status, '— trying Interactions API fallback');
+    // If Interactions API gave a hard error (not 429/auth), try generateContent
+    if (!triedFallback && !response.ok && response.status !== 429 &&
+        response.status !== 401 && response.status !== 403) {
+      const errBody = await response.json().catch(() => ({}));
+      console.warn('Interactions API returned', response.status, JSON.stringify(errBody).slice(0, 200),
+        '— trying generateContent fallback');
       try {
-        const fallbackResponse = await callInteractionsAPI(apiKey, messages, controller.signal);
-        if (fallbackResponse.ok) {
-          response = fallbackResponse;
-          usedFallback = true;
+        const fb = await callGenerateContent(apiKey, messages, controller.signal);
+        if (fb.ok) {
+          response = fb;
+          triedFallback = true;
+        } else {
+          // Both failed — stick with Interactions API error for reporting
+          console.error('Both APIs failed. Interactions:', response.status, 'generateContent:', fb.status);
         }
-      } catch (fallErr) {
-        if (fallErr.name === 'AbortError') throw fallErr;
-        console.warn('Interactions API fallback also failed:', fallErr.message);
+      } catch (fbErr) {
+        if (fbErr.name === 'AbortError') throw fbErr;
+        console.warn('generateContent fallback also threw:', fbErr.message);
       }
     }
 
     if (!response.ok) {
       const providerResult = await response.json().catch(() => ({}));
       const providerError = providerResult.error || {};
-      console.error('Gemini assistant request failed', {
+      console.error('Gemini request failed', {
         httpStatus: response.status,
         providerStatus: providerError.status || 'unknown',
         providerCode: providerError.code || 'unknown',
-        providerMessage: providerError.message || ''
+        providerMessage: (providerError.message || '').slice(0, 300)
       });
+
       if (response.status === 429 || providerError.status === 'RESOURCE_EXHAUSTED') {
-        return reply(503, {
-          error: 'AI quota or rate limit reached. Please try again in a few minutes.'
-        });
+        return reply(503, { error: 'AI quota or rate limit reached. Please try again in a few minutes.' });
       }
       if (response.status === 401 || response.status === 403) {
-        return reply(502, {
-          error: 'AI API key is invalid or expired. Please contact the site administrator.'
-        });
-      }
-      if (response.status === 400) {
-        return reply(502, {
-          error: 'The AI assistant could not process the request. Please try again.'
-        });
+        return reply(502, { error: 'AI API key is invalid or expired. Please contact the site administrator.' });
       }
       return reply(502, { error: 'The AI assistant is temporarily unavailable. Please try again shortly.' });
     }
@@ -194,7 +195,7 @@ async function handler(event) {
     const answer = extractText(result);
 
     if (!answer) {
-      console.error('Empty answer from Gemini. Raw result keys:', Object.keys(result || {}));
+      console.error('Empty answer from Gemini. Response keys:', Object.keys(result || {}).join(', '));
       return reply(502, { error: 'The AI assistant returned an empty answer. Please try asking another way.' });
     }
     return reply(200, { answer });
