@@ -56,6 +56,43 @@
 </footer>
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toasts"></div>
 
+<div class="ai-assistant" id="aiAssistant">
+  <button class="ai-launcher" id="aiLauncher" type="button" aria-label="Open Gemini AI assistant" aria-expanded="false" aria-controls="aiPanel">
+    <span class="ai-launcher-orbit" aria-hidden="true"></span>
+    <i class="bi bi-stars" aria-hidden="true"></i>
+    <span class="ai-launcher-label">Ask AI</span>
+  </button>
+  <section class="ai-panel" id="aiPanel" role="dialog" aria-modal="false" aria-labelledby="aiTitle" hidden>
+    <header class="ai-header">
+      <div class="ai-avatar" aria-hidden="true"><i class="bi bi-stars"></i></div>
+      <div class="ai-heading">
+        <h2 id="aiTitle">LoadPay Assistant</h2>
+        <span><i class="ai-status-dot"></i> Gemini AI <span class="ai-model-name">4 Hydrogen</span></span>
+      </div>
+      <button class="ai-icon-button" id="aiClear" type="button" aria-label="Clear conversation" title="Clear conversation"><i class="bi bi-arrow-clockwise"></i></button>
+      <button class="ai-icon-button" id="aiClose" type="button" aria-label="Close assistant"><i class="bi bi-x-lg"></i></button>
+    </header>
+    <div class="ai-messages" id="aiMessages" role="log" aria-live="polite" aria-relevant="additions text">
+      <div class="ai-welcome">
+        <span class="ai-welcome-icon"><i class="bi bi-stars"></i></span>
+        <strong>Kumusta! How can I help?</strong>
+        <p>Ask me about buying load, data promos, bills, e-wallets, or using LoadPay Hub.</p>
+        <div class="ai-suggestions">
+          <button type="button" data-prompt="How do I buy mobile load?">How to buy load?</button>
+          <button type="button" data-prompt="What payment methods can I use?">Payment methods</button>
+          <button type="button" data-prompt="How can I check my order?">Check an order</button>
+        </div>
+      </div>
+    </div>
+    <form class="ai-compose" id="aiForm">
+      <label class="visually-hidden" for="aiInput">Message the LoadPay assistant</label>
+      <textarea id="aiInput" rows="1" maxlength="1200" placeholder="Type your question..." required></textarea>
+      <button id="aiSend" type="submit" aria-label="Send message"><i class="bi bi-arrow-up"></i></button>
+    </form>
+    <p class="ai-disclaimer">Messages go to Google Gemini. AI can make mistakes; never share passwords, OTPs, or payment details.</p>
+  </section>
+</div>
+
 <div class="modal fade" id="cf" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="gpulse" style="background:#fee2e2;color:#dc2626"><i class="bi bi-trash3-fill"></i></div><h5 class="fw-bold">Delete history?</h5><p class="text-secondary small" id="cfMsg"></p><div class="d-flex gap-2"><button class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger w-100" onclick="LP.doDel()"><i class="bi bi-trash3-fill"></i> Delete</button></div></div></div></div></div>
 
 <div class="modal fade" id="fp" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center" id="fpBody"></div></div></div></div>
@@ -80,5 +117,6 @@
 <script defer src="js/config.js"></script>
 <script defer src="js/version.js"></script>
 <script defer src="js/app.js"></script>
+<script defer src="js/assistant.js"></script>
 </body>
 </html>

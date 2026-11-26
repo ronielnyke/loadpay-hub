@@ -146,6 +146,17 @@ To show it in your EmailJS **activation** template, add `<img src="https://lamba
 Google blocks sign-in inside Messenger/Facebook's built-in browser. The login page detects it and shows an **Open in browser** button (Android) or **Copy link**; email + password and the activation key still work there. Share the site link with customers in Chrome/Safari when possible.
 Every account except the owner (ronielnyke@gmail.com) must enter its emailed activation key once. After that it never asks again for that email.
 
+## Gemini AI customer assistant
+The floating **Ask AI** button opens a real Gemini-powered assistant that explains how to use LoadPay Hub. It does not read accounts, check transaction/payment status, or place orders; customers should use their signed-in account for those actions. Chat messages are sent to Google's Gemini API.
+
+To enable replies on Netlify:
+1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey).
+2. In Netlify, open **Site configuration > Environment variables** and add `GEMINI_API_KEY` with the key as its value. Keep this key in Netlify only; never add it to `js/config.js` or commit it.
+3. Trigger a new Netlify deploy. The assistant uses the stable `gemini-4-hydrogen` model by default. To select another model available to your API key, set the optional `GEMINI_MODEL` environment variable to its exact model ID and redeploy.
+4. Open the deployed site and send a test question. If the key is missing, invalid, or the model is unavailable to the account, the chat reports that it cannot answer instead of pretending to be working.
+
+Gemini API usage may be subject to Google quotas and billing. Set usage limits for the API key/project in Google AI Studio or Google Cloud. The key stays server-side in the Netlify Function; browser requests go to `/.netlify/functions/assistant`.
+
 ## 13. History: select & delete
 Customers can **Select** several records or **Delete all**; this only hides them from their own history (the owner still keeps every record in the Dashboard). Unpaid "Awaiting Payment" orders cannot be deleted until finished. The owner can delete permanently. Publish the updated `firestore.rules`.
 
