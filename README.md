@@ -150,12 +150,12 @@ Every account except the owner (ronielnyke@gmail.com) must enter its emailed act
 The floating **Ask AI** button opens a Gemini-powered general assistant. It can respond to general questions as well as LoadPay Hub questions, and is instructed to reply in the language and writing system used by the customer. Language coverage and factual accuracy depend on Gemini; answers are not guaranteed to be correct for every question or language. It does not read accounts, check transaction/payment status, or place orders; customers should use their signed-in account for those actions. Chat messages are sent to Google's Gemini API.
 
 To enable replies on Netlify:
-1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey).
+1. Create or check an active Gemini API key in [Google AI Studio](https://aistudio.google.com/api-keys). Google AI Studio now creates authorization keys by default. If an older standard key is rejected, restrict it to the Gemini API or create a new authorization key.
 2. In Netlify, open **Site configuration > Environment variables** and add `GEMINI_API_KEY` with the key as its value, available to **Functions** in the production deploy context. Keep this key in Netlify only; never add it to `js/config.js` or commit it.
-3. Trigger a new Netlify deploy. The assistant uses the stable `gemini-4-hydrogen` model by default. To select another model available to your API key, set the optional `GEMINI_MODEL` environment variable to its exact model ID and redeploy.
+3. Trigger a new Netlify deploy. The assistant uses Google's current stable `gemini-4-hydrogen` model through the recommended Gemini Interactions API.
 4. Open the deployed site and send a test question. If the key is missing, invalid, or the model is unavailable to the account, the chat reports that it cannot answer instead of pretending to be working.
 
-Gemini API usage may be subject to Google quotas and billing. Set usage limits for the API key/project in Google AI Studio or Google Cloud. The key stays server-side in the Netlify Function; browser requests go to `/.netlify/functions/assistant`.
+Gemini API usage may be subject to Google quotas and billing. Set usage limits for the API key/project in Google AI Studio or Google Cloud. The key stays server-side in the Netlify Function; browser requests go to `/.netlify/functions/assistant`. Requests use `store: false`, so the Interactions API does not retain chat interactions for conversation history.
 If the function returns HTTP 503, read its response message: it distinguishes a missing `GEMINI_API_KEY` from a Gemini quota/rate limit. After changing Netlify environment variables, trigger a new deploy so the function receives them.
 
 ## 13. History: select & delete

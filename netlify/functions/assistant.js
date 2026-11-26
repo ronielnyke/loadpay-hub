@@ -1,6 +1,6 @@
 'use strict';
 
-const MODEL = (process.env.GEMINI_MODEL || '').trim() || 'gemini-4-hydrogen';
+const MODEL = 'gemini-4-hydrogen';
 const SYSTEM_INSTRUCTION = `You are a helpful, general-purpose AI assistant built into LoadPay Hub. Answer the customer's actual question, whether it is about LoadPay Hub or another ordinary topic; do not limit yourself to website-support questions or generic greetings. Be useful, clear, and appropriately detailed. For LoadPay Hub questions, explain the steps for mobile load, data promos, bills, e-wallets, and payment methods.
 Understand and reply in the language and writing system the customer uses, including languages other than English and Filipino, mixed-language messages, and transliteration. Match the customer's latest message; if they explicitly request another language, use that language. Do not claim you only support a fixed list of languages. If a message is genuinely unclear, ask a brief clarifying question in the language you can identify.
 Use your general knowledge to answer what you can, but be honest about uncertainty and knowledge limitations. Do not claim to browse the internet, see this website's live data, or perform actions unless that information or capability is explicitly provided in the conversation. Treat the current prices and availability shown in the app as the source of truth.
@@ -65,15 +65,24 @@ async function handler(event) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
-    const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`);
+    const url = new URL('https://generativelanguage.googleapis.com/v1beta/interactions');
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+        'Api-Revision': '2026-05-20'
+      },
       signal: controller.signal,
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-        contents: messages,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 1000 }
+        model: MODEL,
+        system_instruction: SYSTEM_INSTRUCTION,
+        input: messages.map(message => ({
+          type: message.role === 'user' ? 'user_input' : 'model_output',
+          content: message.parts.map(part => ({ type: 'text', text: part.text }))
+        })),
+        generation_config: { temperature: 0.4, thinking_level: 'medium', max_output_tokens: 1000 },
+        store: false
       })
     });
 
@@ -89,14 +98,14 @@ async function handler(event) {
           error: 'Gemini API quota or rate limit reached. Check the API quota and billing in Google AI Studio, then try again later.'
         });
       }
-      if (response.status === 403) {
+      if (response.status === 401 || response.status === 403) {
         return reply(502, {
-          error: 'Gemini rejected the API key. Check that GEMINI_API_KEY is a valid, enabled Gemini API key in Netlify, then redeploy.'
+          error: 'Gemini rejected the API key. Create or check an active Gemini API key in Google AI Studio, update GEMINI_API_KEY in Netlify, then redeploy.'
         });
       }
       if (response.status === 404) {
         return reply(502, {
-          error: `Gemini model "${MODEL}" is unavailable. Check the GEMINI_MODEL setting in Netlify and redeploy.`
+          error: 'The current Gemini model is unavailable to this API key or project. Check Gemini model access in Google AI Studio and redeploy.'
         });
       }
       if (response.status === 400) {
@@ -108,8 +117,9 @@ async function handler(event) {
     }
 
     const result = await response.json();
-    const answer = (result.candidates || [])
-      .flatMap(candidate => candidate.content && candidate.content.parts ? candidate.content.parts : [])
+    const answer = (result.steps || [])
+      .filter(step => step.type === 'model_output')
+      .flatMap(step => step.content || [])
       .map(part => typeof part.text === 'string' ? part.text : '')
       .join('')
       .trim();
