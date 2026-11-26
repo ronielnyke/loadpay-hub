@@ -147,7 +147,7 @@ Google blocks sign-in inside Messenger/Facebook's built-in browser. The login pa
 Every account except the owner (ronielnyke@gmail.com) must enter its emailed activation key once. After that it never asks again for that email.
 
 ## Gemini AI customer assistant
-The floating **Ask AI** button opens a real Gemini-powered assistant that explains how to use LoadPay Hub. It does not read accounts, check transaction/payment status, or place orders; customers should use their signed-in account for those actions. Chat messages are sent to Google's Gemini API.
+The floating **Ask AI** button opens a Gemini-powered general assistant. It can respond to general questions as well as LoadPay Hub questions, and is instructed to reply in the language and writing system used by the customer. Language coverage and factual accuracy depend on Gemini; answers are not guaranteed to be correct for every question or language. It does not read accounts, check transaction/payment status, or place orders; customers should use their signed-in account for those actions. Chat messages are sent to Google's Gemini API.
 
 To enable replies on Netlify:
 1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey).
