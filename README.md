@@ -151,11 +151,12 @@ The floating **Ask AI** button opens a Gemini-powered general assistant. It can 
 
 To enable replies on Netlify:
 1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey).
-2. In Netlify, open **Site configuration > Environment variables** and add `GEMINI_API_KEY` with the key as its value. Keep this key in Netlify only; never add it to `js/config.js` or commit it.
+2. In Netlify, open **Site configuration > Environment variables** and add `GEMINI_API_KEY` with the key as its value, available to **Functions** in the production deploy context. Keep this key in Netlify only; never add it to `js/config.js` or commit it.
 3. Trigger a new Netlify deploy. The assistant uses the stable `gemini-4-hydrogen` model by default. To select another model available to your API key, set the optional `GEMINI_MODEL` environment variable to its exact model ID and redeploy.
 4. Open the deployed site and send a test question. If the key is missing, invalid, or the model is unavailable to the account, the chat reports that it cannot answer instead of pretending to be working.
 
 Gemini API usage may be subject to Google quotas and billing. Set usage limits for the API key/project in Google AI Studio or Google Cloud. The key stays server-side in the Netlify Function; browser requests go to `/.netlify/functions/assistant`.
+If the function returns HTTP 503, read its response message: it distinguishes a missing `GEMINI_API_KEY` from a Gemini quota/rate limit. After changing Netlify environment variables, trigger a new deploy so the function receives them.
 
 ## 13. History: select & delete
 Customers can **Select** several records or **Delete all**; this only hides them from their own history (the owner still keeps every record in the Dashboard). Unpaid "Awaiting Payment" orders cannot be deleted until finished. The owner can delete permanently. Publish the updated `firestore.rules`.

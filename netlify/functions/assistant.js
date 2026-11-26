@@ -1,6 +1,6 @@
 'use strict';
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-4-hydrogen';
+const MODEL = (process.env.GEMINI_MODEL || '').trim() || 'gemini-4-hydrogen';
 const SYSTEM_INSTRUCTION = `You are a helpful, general-purpose AI assistant built into LoadPay Hub. Answer the customer's actual question, whether it is about LoadPay Hub or another ordinary topic; do not limit yourself to website-support questions or generic greetings. Be useful, clear, and appropriately detailed. For LoadPay Hub questions, explain the steps for mobile load, data promos, bills, e-wallets, and payment methods.
 Understand and reply in the language and writing system the customer uses, including languages other than English and Filipino, mixed-language messages, and transliteration. Match the customer's latest message; if they explicitly request another language, use that language. Do not claim you only support a fixed list of languages. If a message is genuinely unclear, ask a brief clarifying question in the language you can identify.
 Use your general knowledge to answer what you can, but be honest about uncertainty and knowledge limitations. Do not claim to browse the internet, see this website's live data, or perform actions unless that information or capability is explicitly provided in the conversation. Treat the current prices and availability shown in the app as the source of truth.
@@ -21,9 +21,12 @@ async function handler(event) {
     return reply(405, { error: 'Use POST to send a message.' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
   if (!apiKey) {
-    return reply(503, { error: 'The AI assistant is not configured yet. Please try again later.' });
+    console.error('Gemini assistant is not configured: GEMINI_API_KEY is missing.');
+    return reply(503, {
+      error: 'AI setup is incomplete: add GEMINI_API_KEY to the Netlify Function environment variables, then redeploy the site.'
+    });
   }
 
   if (!event.body || event.body.length > 20000) {
@@ -75,12 +78,31 @@ async function handler(event) {
     });
 
     if (!response.ok) {
-      console.error('Gemini assistant request failed with status', response.status);
-      if (response.status === 429) {
-        return reply(503, { error: 'The AI assistant is busy right now. Please wait a moment and try again.' });
+      const providerResult = await response.json().catch(() => ({}));
+      const providerError = providerResult.error || {};
+      console.error('Gemini assistant request failed', {
+        httpStatus: response.status,
+        providerStatus: providerError.status || 'unknown'
+      });
+      if (response.status === 429 || providerError.status === 'RESOURCE_EXHAUSTED') {
+        return reply(503, {
+          error: 'Gemini API quota or rate limit reached. Check the API quota and billing in Google AI Studio, then try again later.'
+        });
       }
-      if (response.status === 400 || response.status === 403 || response.status === 404) {
-        return reply(502, { error: 'The AI assistant could not answer right now. Please check the Gemini API key and model configuration.' });
+      if (response.status === 403) {
+        return reply(502, {
+          error: 'Gemini rejected the API key. Check that GEMINI_API_KEY is a valid, enabled Gemini API key in Netlify, then redeploy.'
+        });
+      }
+      if (response.status === 404) {
+        return reply(502, {
+          error: `Gemini model "${MODEL}" is unavailable. Check the GEMINI_MODEL setting in Netlify and redeploy.`
+        });
+      }
+      if (response.status === 400) {
+        return reply(502, {
+          error: 'Gemini rejected the request. Check the model and API configuration in Netlify.'
+        });
       }
       return reply(502, { error: 'The AI assistant is temporarily unavailable. Please try again shortly.' });
     }
