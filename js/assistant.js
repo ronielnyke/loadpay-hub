@@ -50,7 +50,7 @@
   }
 
   async function sendMessage(rawText) {
-    const text = rawText.trim();
+    const text = String(rawText || '').trim();
     if (!text || sending) return;
 
     messagesEl.querySelector('.ai-welcome')?.remove();
@@ -100,7 +100,7 @@
         : error.message || 'Could not reach the assistant. Please check your connection and try again.');
     } finally {
       setSending(false);
-      input.focus();
+      if (!panel.hidden && window.matchMedia('(min-width: 576px)').matches) input.focus();
     }
   }
 

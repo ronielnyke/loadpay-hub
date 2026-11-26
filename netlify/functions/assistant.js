@@ -1,6 +1,6 @@
 'use strict';
 
-const MODEL = 'gemini-4-hydrogen';
+const MODEL = (process.env.GEMINI_MODEL || '').trim() || 'gemini-4-hydrogen';
 const SYSTEM_INSTRUCTION = `You are a helpful, general-purpose AI assistant built into LoadPay Hub. Answer the customer's actual question, whether it is about LoadPay Hub or another ordinary topic; do not limit yourself to website-support questions or generic greetings. Be useful, clear, and appropriately detailed. For LoadPay Hub questions, explain the steps for mobile load, data promos, bills, e-wallets, and payment methods.
 Understand and reply in the language and writing system the customer uses, including languages other than English and Filipino, mixed-language messages, and transliteration. Match the customer's latest message; if they explicitly request another language, use that language. Do not claim you only support a fixed list of languages. If a message is genuinely unclear, ask a brief clarifying question in the language you can identify.
 Use your general knowledge to answer what you can, but be honest about uncertainty and knowledge limitations. Do not claim to browse the internet, see this website's live data, or perform actions unless that information or capability is explicitly provided in the conversation. Treat the current prices and availability shown in the app as the source of truth.
@@ -21,7 +21,7 @@ async function handler(event) {
     return reply(405, { error: 'Use POST to send a message.' });
   }
 
-  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
   if (!apiKey) {
     console.error('Gemini assistant is not configured: GEMINI_API_KEY is missing.');
     return reply(503, {
@@ -29,13 +29,16 @@ async function handler(event) {
     });
   }
 
-  if (!event.body || event.body.length > 20000) {
+  const rawBody = event.isBase64Encoded
+    ? Buffer.from(event.body || '', 'base64').toString('utf8')
+    : (event.body || '');
+  if (!rawBody || rawBody.length > 20000) {
     return reply(400, { error: 'The message is empty or too large.' });
   }
 
   let input;
   try {
-    input = JSON.parse(event.body);
+    input = JSON.parse(rawBody);
   } catch (error) {
     return reply(400, { error: 'The message could not be read. Please try again.' });
   }
@@ -81,7 +84,7 @@ async function handler(event) {
           type: message.role === 'user' ? 'user_input' : 'model_output',
           content: message.parts.map(part => ({ type: 'text', text: part.text }))
         })),
-        generation_config: { temperature: 0.4, thinking_level: 'medium', max_output_tokens: 1000 },
+        generation_config: { temperature: 0.4, thinking_level: 'low', max_output_tokens: 1000 },
         store: false
       })
     });
@@ -91,7 +94,9 @@ async function handler(event) {
       const providerError = providerResult.error || {};
       console.error('Gemini assistant request failed', {
         httpStatus: response.status,
-        providerStatus: providerError.status || 'unknown'
+        providerStatus: providerError.status || 'unknown',
+        providerCode: providerError.code || 'unknown',
+        providerMessage: providerError.message || ''
       });
       if (response.status === 429 || providerError.status === 'RESOURCE_EXHAUSTED') {
         return reply(503, {
@@ -117,10 +122,15 @@ async function handler(event) {
     }
 
     const result = await response.json();
-    const answer = (result.steps || [])
-      .filter(step => step.type === 'model_output')
-      .flatMap(step => step.content || [])
-      .map(part => typeof part.text === 'string' ? part.text : '')
+    const stepsAnswer = (result.steps || [])
+      .filter(step => step && step.type === 'model_output')
+      .flatMap(step => Array.isArray(step.content) ? step.content : [])
+      .map(part => (part && typeof part.text === 'string') ? part.text : '')
+      .join('')
+      .trim();
+    const answer = stepsAnswer || (result.outputs || [])
+      .flatMap(out => Array.isArray(out && out.content) ? out.content : (out && typeof out.text === 'string' ? [out] : []))
+      .map(part => (part && typeof part.text === 'string') ? part.text : '')
       .join('')
       .trim();
 

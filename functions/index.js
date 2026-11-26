@@ -81,22 +81,34 @@ async function paymongo(path, method = 'GET', body) {
   const key = paymongoSecret.value();
   if (!key) throw httpError(503, 'PayMongo is not configured in Firebase Secret Manager.');
 
-  const response = await fetch(`https://api.paymongo.com/v1${path}`, {
-    method,
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${key}:`).toString('base64')}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json'
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = result.errors && result.errors[0] &&
-      (result.errors[0].detail || result.errors[0].code);
-    throw httpError(response.status >= 500 ? 502 : 400, `PayMongo: ${detail || `error ${response.status}`}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(`https://api.paymongo.com/v1${path}`, {
+      method,
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${key}:`).toString('base64')}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      signal: controller.signal,
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = result.errors && result.errors[0] &&
+        (result.errors[0].detail || result.errors[0].code);
+      throw httpError(response.status >= 500 ? 502 : 400, `PayMongo: ${detail || `error ${response.status}`}`);
+    }
+    return result;
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      throw httpError(504, 'PayMongo timed out. Please try again.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  return result;
 }
 
 exports.pmCreate = endpoint(async (req, res) => {

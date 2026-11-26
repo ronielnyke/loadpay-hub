@@ -6,6 +6,8 @@ const APP_ORIGIN = 'https://lambaconnect.netlify.app';
 
 function proxy(functionName) {
   return async event => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
     try {
       const headers = { Origin: APP_ORIGIN };
       if (event.httpMethod !== 'GET' && event.body) headers['Content-Type'] = 'application/json';
@@ -15,6 +17,7 @@ function proxy(functionName) {
       const response = await fetch(`${FUNCTIONS_URL}/${functionName}`, {
         method: event.httpMethod,
         headers,
+        signal: controller.signal,
         body: event.httpMethod === 'GET' || event.httpMethod === 'HEAD' ? undefined : body
       });
       return {
@@ -32,6 +35,8 @@ function proxy(functionName) {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
         body: JSON.stringify({ error: 'Payment service is temporarily unavailable.' })
       };
+    } finally {
+      clearTimeout(timeout);
     }
   };
 }

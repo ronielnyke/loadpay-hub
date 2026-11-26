@@ -42,7 +42,7 @@ function actParams(email, name, code) {
   return p;
 }
 const ACT_TPL = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">
-<div style="background:#0b2a6f;padding:24px;text-align:center"><img src="${(typeof location !== 'undefined' && location.origin) || ''}/img/logo-192.png" width="72" height="72" alt="LoadPay Hub" style="border-radius:50%;border:3px solid #ffffff"><div style="color:#ffffff;font-size:20px;font-weight:800;margin-top:8px">LoadPay Hub</div></div>
+<div style="background:#0b2a6f;padding:24px;text-align:center"><img src="${(typeof location !== 'undefined' && location.origin && location.origin !== 'null' ? location.origin : '')}/img/logo-192.png" width="72" height="72" alt="LoadPay Hub" style="border-radius:50%;border:3px solid #ffffff"><div style="color:#ffffff;font-size:20px;font-weight:800;margin-top:8px">LoadPay Hub</div></div>
 <div style="padding:24px"><h2 style="margin:0 0 8px;color:#0f172a">Hello, {{to_name}}!</h2>
 <p style="color:#475569;font-size:15px">Use this activation key to activate your account:</p>
 <div style="text-align:center;margin:20px 0"><span style="display:inline-block;background:#eef4ff;border:2px dashed #0b5ed7;border-radius:12px;padding:14px 26px;font-size:30px;letter-spacing:6px;font-weight:800;color:#0b5ed7;font-family:Courier New,monospace">{{code}}</span></div>
@@ -63,7 +63,7 @@ async function sendCode(u, name) {
   await loadMail();
   await emailjs.send(C.emailjs.serviceId, C.emailjs.activationTemplateId, actParams(u.email, name, code));
 }
-const actErr = e => ({BADKEY:'Wrong activation key. Check the email and try again.', EXPIRED:'This key expired. Tap "Send a new key".', NOKEY:'No activation key found. Tap "Send a new key".'}[e.message] || diag(e));
+const actErr = e => ({BADKEY:'Wrong activation key. Check the email and try again.', EXPIRED:'This key expired. Tap "Send a new key".', NOKEY:'No activation key found. Tap "Send a new key".'}[e && e.message] || diag(e));
 const OKSVG = '<svg class="ok" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48"/><path d="M28 52l16 16 29-33"/></svg>';
 function startWatch() {
   if (!db || S.unsub) return;
@@ -79,6 +79,7 @@ function beep() { try { const A = window.AudioContext || window.webkitAudioConte
 
 /* ----- PayMongo server API ----- */
 async function fn(name, body) {
+  if (!auth || !auth.currentUser) throw new Error('Please sign in again.');
   const t = await auth.currentUser.getIdToken();
   const r = await TO(fetch('/.netlify/functions/' + name, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...body, idToken:t})}), 25000);
   const j = await r.json().catch(() => ({}));
@@ -86,7 +87,9 @@ async function fn(name, body) {
   return j;
 }
 async function checkPM() {
+  const prev = PM.ok;
   try { const r = await TO(fetch('/.netlify/functions/pm-status'), 5000), j = await r.json(); PM.ok = !!j.ok; PM.mode = j.mode || 'test'; } catch (e) { PM.ok = false; }
+  if (PM.ok !== prev && S.view === 'pay') render(false);
 }
 async function paidMail(t) {
   const m = await sendReceipt(t, `LoadPay Hub payment confirmed \u2013 ${t.id}`);
@@ -203,7 +206,7 @@ const newFlow = (type, cat) => ({type, net:'smart', amount:0, mobile:'', promo:n
 const DEF_CAT = {loadAmounts:[10,20,30,50,100,200,300,500], promos:promosFrom(REAL), billers:Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, [...v.b]])), fees:{load:0, data:0, bill:0}};
 const CAT = JSON.parse(JSON.stringify(DEF_CAT));
 const promos = id => CAT.promos[id] || [];
-const billersOf = k => (CAT.billers && CAT.billers[k]) || CATS[k].b;
+const billersOf = k => (CAT.billers && CAT.billers[k]) || (CATS[k] && CATS[k].b) || [];
 const PM = {ok:false, mode:'test'};
 const PAYMENT_LABELS = {Card:'Visa / Mastercard'};
 const paymentLabel = method => PAYMENT_LABELS[method] || method;
@@ -217,6 +220,7 @@ const Store = {
     else { const l = this._l(); l.push(t); localStorage.setItem('lph_tx', JSON.stringify(l)); }
   },
   async list() {
+    if (!user) return [];
     let r;
     if (db) {
       const c = db.collection('transactions');
@@ -226,7 +230,6 @@ const Store = {
     if (!isAdmin()) r = r.filter(t => !t.hidden);
     return r.sort((a, b) => b.ts - a.ts);
   },
-  copyTpl() { LP.copy(ACT_TPL, 'Template copied! In EmailJS open your Activation template > Edit Content > code view > paste > Save.'); },
   async fulfill(id) {
     if (db) await TO(db.collection('transactions').doc(id).update({fulfilled:true, fulfilledAt:Date.now(), updated:Date.now()}));
     else { const l = this._l(); const t = l.find(x => x.id === id); if (t) t.fulfilled = true; localStorage.setItem('lph_tx', JSON.stringify(l)); }
@@ -298,9 +301,9 @@ function methodsList() {
 }
 function valid() {
   const f = S.flow;
-  if (S.view === 'load') return !!f.net && f.amount >= 10 && f.amount <= 1000 && okPhone(f.mobile);
-  if (S.view === 'data') return !!f.net && f.promo !== null && okPhone(f.mobile);
-  if (S.view === 'bills') return !!f.cat && !!f.biller && f.account.trim().length >= 4 && f.amount >= 1;
+  if (S.view === 'load') return !!f.net && Number.isFinite(f.amount) && f.amount >= 10 && f.amount <= 1000 && okPhone(f.mobile);
+  if (S.view === 'data') return !!f.net && f.promo !== null && !!promos(f.net)[f.promo] && okPhone(f.mobile);
+  if (S.view === 'bills') return !!f.cat && !!f.biller && f.account.trim().length >= 4 && Number.isFinite(f.amount) && f.amount >= 1;
   if (S.view === 'pay') return true;
   return true;
 }
@@ -395,7 +398,8 @@ ${M.map(m => `<button class="method ${f.method === m[0] ? 'on' : ''}" ${m[3] ? '
 <div class="payinfo">${note}</div>${nextBtn('submit', f.method === 'Cash' ? 'Place Order' : 'Pay with ' + paymentLabel(f.method))}</div>`;
   },
   done() {
-    const t = S.last, aw = t.status === 'Awaiting Payment', acc = t.method === 'Maya' ? PAY.maya : PAY.gcash;
+    const t = S.last; if (!t) return V.home();
+    const aw = t.status === 'Awaiting Payment', acc = t.method === 'Maya' ? PAY.maya : PAY.gcash;
     const kv = `<div class="text-start mb-3"><div class="kv"><span>Service</span><b>${esc(t.service)}</b></div><div class="kv"><span>Details</span><b>${esc(t.detail)}</b></div><div class="kv"><span>Amount</span><b>${peso(t.amount)}</b></div><div class="kv"><span>Payment</span><b>${esc(paymentLabel(t.method))}</b></div><div class="kv"><span>Transaction ID</span><b>${esc(t.id)}</b></div><div class="kv"><span>Date & Time</span><b>${fmtDate(t.ts)}</b></div></div>`;
     if (aw && t.online) return `<div class="panel anim text-center">${STEPS(2)}<div class="gpulse"><i class="bi bi-phone-fill"></i></div><h4 class="fw-bold">Complete your payment</h4><p class="text-secondary mb-2">Your order is saved. Pay securely with ${esc(paymentLabel(t.method))} \u2013 you will be redirected and brought back here automatically.</p>
 <div class="total my-3"><small class="opacity-75">Amount to pay</small><div class="n">${peso(t.amount)}</div></div>
@@ -407,7 +411,7 @@ ${M.map(m => `<button class="method ${f.method === m[0] ? 'on' : ''}" ${m[3] ? '
 ${t.method === 'GCash' ? '<button class="btn btn-primary btn-lg w-100 mb-3" onclick="LP.gcash()"><i class="bi bi-box-arrow-up-right"></i> Open GCash App</button>' : ''}
 <div class="payinfo text-start"><ol class="small ps-3 mb-3"><li>Open <b>${esc(paymentLabel(t.method))}</b> and tap <b>Send Money</b>.</li><li>Send exactly <b>${peso(t.amount)}</b> to the number below, or scan the QR.</li><li>Come back here, enter the reference number, and tap <b>I've Paid</b>.</li></ol>
 <div class="text-center"><div class="num">${esc(acc.number)}</div><div class="fw-semibold">${esc(acc.name)}</div>${t.method === 'GCash' && PAY.gcash.qr ? `<div><img src="${esc(PAY.gcash.qr)}" alt="GCash QR"></div>` : ''}
-<div class="d-flex gap-2 justify-content-center my-2"><button class="btn btn-sm btn-outline-primary" onclick="LP.copy('${esc(acc.number)}')"><i class="bi bi-clipboard"></i> Copy number</button><button class="btn btn-sm btn-outline-primary" onclick="LP.copy('${t.amount.toFixed(2)}')"><i class="bi bi-clipboard"></i> Copy amount</button></div></div></div>
+<div class="d-flex gap-2 justify-content-center my-2"><button class="btn btn-sm btn-outline-primary" onclick="LP.copy('${esc(acc.number)}')"><i class="bi bi-clipboard"></i> Copy number</button><button class="btn btn-sm btn-outline-primary" onclick="LP.copy('${Number(t.amount || 0).toFixed(2)}')"><i class="bi bi-clipboard"></i> Copy amount</button></div></div></div>
 <input id="refIn" class="form-control text-center mt-3" inputmode="numeric" maxlength="16" placeholder="Enter reference number" oninput="this.value=this.value.replace(/\\D/g,'')">
 <button class="btn btn-primary btn-lg w-100 mt-3" onclick="LP.paid()"><i class="bi bi-check2-circle"></i> I've Paid</button>
 <small class="text-secondary d-block mt-3">Order ${esc(t.id)} \u2022 You can also finish this later from History.</small></div>`;
@@ -431,7 +435,7 @@ ${t.method === 'GCash' ? '<button class="btn btn-primary btn-lg w-100 mb-3" oncl
 <div class="row g-2"><div class="col-md-6"><label class="lbl mt-0">Public Key</label><input id="emPk" class="form-control" autocomplete="off" value="${esc(isSet(C.emailjs.publicKey) ? C.emailjs.publicKey : '')}"></div><div class="col-md-6"><label class="lbl mt-0">Service ID</label><input id="emSv" class="form-control" autocomplete="off" value="${esc(isSet(C.emailjs.serviceId) ? C.emailjs.serviceId : '')}"></div>
 <div class="col-md-6"><label class="lbl">Activation Template ID</label><input id="emAt" class="form-control" autocomplete="off" value="${esc(isSet(C.emailjs.activationTemplateId) ? C.emailjs.activationTemplateId : '')}"></div><div class="col-md-6"><label class="lbl">Receipt Template ID</label><input id="emTp" class="form-control" autocomplete="off" value="${esc(isSet(C.emailjs.templateId) ? C.emailjs.templateId : '')}"></div></div>
 <div class="d-flex flex-wrap gap-2 mt-3"><button class="btn btn-primary" onclick="LP.saveMail()"><i class="bi bi-save"></i> Save email settings</button><button class="btn btn-outline-primary" onclick="LP.testMail()"><i class="bi bi-send"></i> Send test email to me</button><button class="btn btn-outline-secondary" onclick="LP.copyTpl()"><i class="bi bi-clipboard"></i> Copy activation template</button></div></div>`;
-    return `<div class="anim"><div class="d-flex align-items-center justify-content-between mb-3"><div><h4 class="fw-bold mb-0">Good day, ${esc(((isOwner() ? C.owner.name : user.name) || 'Operator').split(' ')[0])}! ${isOwner() ? '<span class="owner-badge"><i class="bi bi-patch-check-fill"></i> Owner</span>' : ''}</h4><small class="text-secondary">${new Date().toLocaleDateString('en-US', {dateStyle:'full'})}</small></div><button class="btn btn-outline-primary" onclick="LP.reload()"><i class="bi bi-arrow-clockwise"></i> Refresh</button></div>${isOwner() ? `<div class="stat owner-card mb-3 d-flex align-items-center gap-3"><span class="avatar big">${user.photo ? `<img src="${esc(user.photo)}" referrerpolicy="no-referrer" alt="">` : esc(user.name[0].toUpperCase())}</span><div><b>${esc(C.owner.name)}</b> <span class="owner-badge">Owner</span><small class="d-block text-secondary">${esc(C.owner.email)} \u2022 Administrator</small></div></div>` : ''}<ul class="nav nav-pills admin-tabs mb-3">${tb('ov', 'speedometer2', 'Overview')}${tb('cat', 'tags-fill', 'Prices & Catalog')}${tb('pay', 'credit-card-2-front-fill', 'Payments')}</ul>
+    return `<div class="anim"><div class="d-flex align-items-center justify-content-between mb-3"><div><h4 class="fw-bold mb-0">Good day, ${esc(((isOwner() ? C.owner.name : user.name) || 'Operator').split(' ')[0])}! ${isOwner() ? '<span class="owner-badge"><i class="bi bi-patch-check-fill"></i> Owner</span>' : ''}</h4><small class="text-secondary">${new Date().toLocaleDateString('en-US', {dateStyle:'full'})}</small></div><button class="btn btn-outline-primary" onclick="LP.reload()"><i class="bi bi-arrow-clockwise"></i> Refresh</button></div>${isOwner() ? `<div class="stat owner-card mb-3 d-flex align-items-center gap-3"><span class="avatar big">${user.photo ? `<img src="${esc(user.photo)}" referrerpolicy="no-referrer" alt="">` : esc((user.name || 'U')[0].toUpperCase())}</span><div><b>${esc(C.owner.name)}</b> <span class="owner-badge">Owner</span><small class="d-block text-secondary">${esc(C.owner.email)} \u2022 Administrator</small></div></div>` : ''}<ul class="nav nav-pills admin-tabs mb-3">${tb('ov', 'speedometer2', 'Overview')}${tb('cat', 'tags-fill', 'Prices & Catalog')}${tb('pay', 'credit-card-2-front-fill', 'Payments')}</ul>
 <div id="t-ov" class="${hide('ov')}"><div id="adm"><div class="skel"></div></div></div>
 <div id="t-cat" class="${hide('cat')}"><div id="catEd"></div></div>
 <div id="t-pay" class="${hide('pay')}">${pmCard}${emailCard}
@@ -453,7 +457,7 @@ function nav() {
   el.innerHTML = `<header class="topbar"><div class="container d-flex align-items-center gap-2">
 <a class="brand" href="#" onclick="LP.home();return false"><span class="logo"><img src="img/logo-256.png" alt="LoadPay Hub"></span><span><b>LoadPay Hub</b><small>Load \u2022 Bills \u2022 E-Wallet \u2022 More</small></span></a>
 <nav class="ms-auto d-flex align-items-center">${S.view === 'activate' ? '' : b('home','house-door','Home','LP.home()') + b('hist','clock-history','History','LP.hist()') + (isAdmin() ? b('admin','speedometer2','Dashboard','LP.admin()') : '')}
-${isOwner() ? '<span class="owner-badge d-none d-sm-inline">Owner</span>' : ''}<span class="avatar" title="${esc(user.email)}">${user.photo ? `<img src="${esc(user.photo)}" referrerpolicy="no-referrer" alt="">` : esc(user.name[0].toUpperCase())}</span>${b('', 'box-arrow-right', 'Logout', 'LP.out()')}</nav></div></header>`;
+${isOwner() ? '<span class="owner-badge d-none d-sm-inline">Owner</span>' : ''}<span class="avatar" title="${esc(user.email)}">${user.photo ? `<img src="${esc(user.photo)}" referrerpolicy="no-referrer" alt="">` : esc((user.name || 'U')[0].toUpperCase())}</span>${b('', 'box-arrow-right', 'Logout', 'LP.out()')}</nav></div></header>`;
 }
 function stopAct() { if (S.actT) { clearInterval(S.actT); S.actT = null; } }
 function startAct() { stopAct(); S.actT = setInterval(() => LP.checkAct(true), 4000); }
@@ -522,7 +526,7 @@ async function loadHist() { await fetchTx(); if (S.view === 'hist') drawHist(); 
 const canDel = t => isAdmin() || t.status !== 'Awaiting Payment';
 function histList() {
   const {svc, pay, q} = S.f;
-  return S.txs.filter(t => (!svc || t.type === svc) && (!pay || t.method === pay) && (!q || (t.id + t.detail + t.service).toLowerCase().includes(q.toLowerCase())));
+  return S.txs.filter(t => (!svc || t.type === svc) && (!pay || t.method === pay) && (!q || (String(t.id || '') + ' ' + String(t.detail || '') + ' ' + String(t.service || '')).toLowerCase().includes(q.toLowerCase())));
 }
 function drawHist(anim = true) {
   const el = $('#hist'); if (!el) return;
@@ -541,9 +545,9 @@ function drawHist(anim = true) {
 async function loadAdmin() { await fetchTx(); if (S.view !== 'admin') return; drawAdmin(); startWatch(); }
 function drawAdmin() {
   if (!$('#adm')) return;
-  const ok = S.txs.filter(t => t.status === 'Success'), sales = ok.reduce((a, t) => a + t.amount, 0), pend = S.txs.filter(t => t.status === 'Pending');
+  const ok = S.txs.filter(t => t.status === 'Success'), sales = ok.reduce((a, t) => a + (Number(t.amount) || 0), 0), pend = S.txs.filter(t => t.status === 'Pending');
   const days = Array.from({length:7}, (_, i) => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - 6 + i); return d; });
-  const vals = days.map(d => ok.filter(t => { const x = new Date(t.ts); x.setHours(0,0,0,0); return x.getTime() === d.getTime(); }).reduce((a, t) => a + t.amount, 0));
+  const vals = days.map(d => ok.filter(t => { const x = new Date(t.ts); x.setHours(0,0,0,0); return x.getTime() === d.getTime(); }).reduce((a, t) => a + (Number(t.amount) || 0), 0));
   const mx = Math.max(...vals, 1), pts = vals.map((v, i) => [30 + i * 90, 170 - (v / mx) * 140]);
   const todo = S.txs.filter(t => t.status === 'Success' && (t.type === 'Load' || t.type === 'Data') && !t.fulfilled);
   const queueHtml = todo.length ? `<div class="stat mb-3"><b><i class="bi bi-send-check-fill"></i> Orders to load (${todo.length})</b><p class="small text-secondary mb-1">These are paid. Load the number with your retailer or GCash app, then tap Mark loaded.</p>${todo.map(t => `<div class="qrow"><div class="flex-grow-1"><b>${esc(t.service)}</b> \u2022 ${peso(t.amount)}<div class="small"><i class="bi bi-phone"></i> <b>${esc(t.mobile || '')}</b>${t.pcode ? ' \u2022 Code: <code>' + esc(t.pcode) + '</code>' : ''}</div><div class="small text-secondary">${esc(t.detail)}</div></div><button class="btn btn-sm btn-outline-primary" title="Copy number" onclick="LP.copy('${esc(t.mobile || '')}', 'Number copied!')"><i class="bi bi-clipboard"></i></button><button class="btn btn-sm btn-success" onclick="LP.fulfill('${esc(t.id)}')"><i class="bi bi-check2-circle"></i> Mark loaded</button></div>`).join('')}</div>` : '';
@@ -820,11 +824,12 @@ window.LP = {
   back() { S.view = S.stack.pop() || 'home'; render(); },
   tile(i) { const t = TILES[i]; S.flow = newFlow(t[2], t[3]); go(VIEW[t[2]]); },
   set(k, v) { S.flow[k] = v; if (k === 'net') { S.flow.promo = null; } render(false); },
-  inp(k, v) { S.flow[k] = v; chk(); },
+  inp(k, v) { S.flow[k] = v; if (k === 'amount' && S.view === 'load') document.querySelectorAll('.amts .amt').forEach(b => b.classList.toggle('on', Number(b.textContent.replace(/[^\d.]/g, '')) === v)); chk(); },
   cat(k) { S.flow.cat = k; S.flow.biller = null; render(false); },
   biller(i) { S.flow.biller = billersOf(S.flow.cat)[i]; render(false); },
   pm(m) { S.flow.method = m; S.flow.ref = ''; render(false); },
   copy(t, m) { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast(m || 'Copied!', 'success')).catch(() => toast('Copy failed. Please copy it manually.', 'warning')); },
+  copyTpl() { LP.copy(ACT_TPL, 'Template copied! In EmailJS open your Activation template > Edit Content > code view > paste > Save.'); },
   next() {
     if (!valid()) return toast('Please complete all required fields.', 'warning');
     const M = methodsList(); if (!M.some(m => m[0] === S.flow.method && m[3])) { const m = M.find(x => x[3]); if (m) S.flow.method = m[0]; }
@@ -851,7 +856,7 @@ window.LP = {
     setTimeout(() => { if (!document.hidden && Date.now() - t0 < 3500) toast('GCash app not detected. Open GCash manually and use the number or QR below.', 'warning'); }, 2000);
   },
   async paid() {
-    const r = ($('#refIn').value || '').replace(/\D/g, '');
+    const r = (($('#refIn') || {}).value || '').replace(/\D/g, '');
     if (r.length < 10 || r.length > 16) return toast('Enter the reference number from your payment receipt (about 13 digits).', 'warning');
     busy(true, 'Submitting your payment\u2026');
     try { await Store.pay(S.last.id, r); } catch (e) { busy(false); return toast(diag(e), 'danger'); }
@@ -881,7 +886,7 @@ window.LP = {
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
       PAY.gcash.qr = c.toDataURL('image/jpeg', .85); const p = $('#qrp'); p.src = PAY.gcash.qr; p.style.display = '';
     };
-    img.onerror = () => toast('Could not read that image.', 'danger'); img.src = url;
+    img.onerror = () => { URL.revokeObjectURL(url); toast('Could not read that image.', 'danger'); }; img.src = url;
   },
   async savePay() {
     if (!isAdmin()) return;
