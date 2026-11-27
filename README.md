@@ -1,140 +1,149 @@
 💳 LoadPay Hub
 
-<div align="center">LOADPAY HUB
+<div align="center">DIGITAL SERVICES, CLOSER TO YOU.
 
-Digital Services, Closer to You.
+Your digital services platform.
 
-A convenient platform for digital services, designed to bring essential transactions together in one place.
-
-"🌐 Visit Website" (https://lambaconnect.netlify.app)
-
-<br>"Website" (https://img.shields.io/badge/Website-Live-brightgreen?style=for-the-badge)
-"Platform" (https://img.shields.io/badge/Platform-Web_Application-blue?style=for-the-badge)
-"Hosting" (https://img.shields.io/badge/Hosted_on-Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)
-"Status" (https://img.shields.io/badge/Status-Deployed-success?style=for-the-badge)
+<br>""Live Website" (https://img.shields.io/badge/🌐_LIVE_WEBSITE-Visit_Now-2563EB?style=for-the-badge)" (https://lambaconnect.netlify.app)
+""Netlify" (https://img.shields.io/badge/DEPLOYMENT-Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)" (https://lambaconnect.netlify.app)
+""Web Application" (https://img.shields.io/badge/PLATFORM-Web_Application-6366F1?style=for-the-badge&logo=googlechrome&logoColor=white)" (https://lambaconnect.netlify.app)
 
 </div>---
 
-📌 About
+<div align="center">🚀 ABOUT THE PROJECT
 
-LoadPay Hub is a web-based digital services platform that provides a centralized interface for accessing different digital service categories.
+</div>LoadPay Hub is a web-based digital services platform designed to bring different digital service categories into one accessible interface.
 
-The project is designed around convenience, accessibility, and a straightforward user experience. It brings together service categories such as mobile load, data packages, bills, and e-wallet services within a single website.
+The platform focuses on convenience and accessibility by providing a centralized website for digital services, including load, data, bills, and e-wallet categories.
 
-Users can also access transaction-related interfaces, including digital receipts and transaction history management.
-
----
-
-✨ Services
-
-<div align="center">📱 LOAD| 📶 DATA| 🧾 BILLS| 💰 E-WALLET
-Mobile Load| Data Packages| Bill Payments| E-Wallet Services
-
-</div>Available Service Categories
-
-- 📱 Mobile Load — Mobile load services.
-- 📶 Data Packages — Mobile data and connectivity services.
-- 🧾 Bills Payment — Bills payment service category.
-- 💰 E-Wallet — E-wallet service category.
+It also features transaction-related interfaces such as digital receipts and transaction history management.
 
 ---
 
-🚀 Features
+📱 SERVICE CATEGORIES
 
-Feature| Description
-📱 Mobile Load| Mobile load service category
-📶 Data Services| Data package service category
-🧾 Bills Payment| Bills payment service interface
-💰 E-Wallet| E-wallet service category
-💳 Payment Options| Multiple payment methods displayed
-📜 Transaction History| Transaction history interface
-🗑️ History Management| Option to delete transaction history
-🧾 Digital Receipt| Digital receipt interface
-📥 Receipt Download| Download receipt option
-🖨️ Receipt Printing| Print receipt option
-🌐 Web-Based| Accessible through a web browser
-📱 Responsive Design| Designed for different screen sizes
+<div align="center">📲| 💡| 🧾| 💳
+LOAD| DATA| BILLS| E-WALLET
+Mobile Load| Data Packages| Bills Payment| E-Wallet Services
+
+</div>---
+
+✨ FEATURES
+
+<details>
+<summary><b>📱 Mobile Load Services</b></summary>Access the mobile load service category through the platform.
+
+</details><details>
+<summary><b>📶 Data Services</b></summary>Explore the data package service category for connectivity-related transactions.
+
+</details><details>
+<summary><b>🧾 Bills Payment</b></summary>Access the bills payment category through the website's interface.
+
+</details><details>
+<summary><b>💰 E-Wallet Services</b></summary>Explore the e-wallet service category.
+
+</details><details>
+<summary><b>💳 Payment Methods</b></summary>The interface displays different payment options, including:
+
+- GCash
+- Maya
+- GrabPay
+- Visa
+- Mastercard
+- Cash
+
+</details><details>
+<summary><b>📜 Transaction History</b></summary>Provides a transaction history-related interface and history management option.
+
+</details><details>
+<summary><b>🧾 Digital Receipt</b></summary>Provides a digital receipt interface with options for downloading and printing receipts.
+
+</details>---
+
+💳 PAYMENT OPTIONS
+
+<div align="center">"GCash" (https://img.shields.io/badge/GCash-Digital_Wallet-007DFE?style=flat-square)
+"Maya" (https://img.shields.io/badge/Maya-Digital_Wallet-00A86B?style=flat-square)
+"GrabPay" (https://img.shields.io/badge/GrabPay-Digital_Wallet-00B14F?style=flat-square)
+"Visa" (https://img.shields.io/badge/Visa-Payment-1434CB?style=flat-square&logo=visa&logoColor=white)
+"Mastercard" (https://img.shields.io/badge/Mastercard-Payment-EB001B?style=flat-square&logo=mastercard&logoColor=white)
+
+</div>«The payment methods listed represent the options displayed by the platform. Actual availability depends on the implementation and transaction configuration.»
 
 ---
 
-💳 Payment Methods
+🧾 DIGITAL RECEIPT
 
-The website displays the following payment methods:
+The platform provides a digital receipt interface for transaction-related records.
 
-<div align="center">GCash · Maya · GrabPay · Visa · Mastercard · Cash
+Available options
 
-</div>«Payment methods shown on the interface do not necessarily mean that every method is fully integrated or available for all transactions.»
-
----
-
-🧾 Digital Receipt
-
-The platform provides a digital receipt interface with options intended to help users manage transaction records.
-
-Receipt Options
-
-- 📥 Download receipt
-- 🖨️ Print receipt
+- 📥 Download Receipt
+- 🖨️ Print Receipt
 
 ---
 
-📜 Transaction History
+📜 TRANSACTION MANAGEMENT
 
-The website includes a transaction history-related interface and a history deletion option to support transaction record management.
+The website includes transaction-related interfaces designed to help organize records.
+
+- Transaction history interface
+- History management
+- History deletion option
+- Digital receipt interface
 
 ---
 
-🎯 Project Objectives
+🎯 PROJECT GOALS
 
-LoadPay Hub aims to:
-
-- Provide a centralized digital services platform.
-- Make digital service categories easier to access.
-- Deliver a simple and convenient website experience.
+- Provide a centralized platform for digital services.
+- Improve accessibility to service categories.
+- Create a convenient web-based user experience.
 - Organize transaction-related interfaces.
 - Provide digital receipt functionality.
-- Improve accessibility through a web-based platform.
+- Make the platform accessible using different devices and browsers.
 
 ---
 
-🛠️ Platform Information
+🌐 LIVE DEPLOYMENT
 
-Details| Information
-Project| LoadPay Hub
-Website| "lambaconnect.netlify.app" (https://lambaconnect.netlify.app)
-Application Type| Web Application
-Deployment Platform| Netlify
-Service Categories| Load, Data, Bills, E-Wallet
-Payment Methods Displayed| GCash, Maya, GrabPay, Visa, Mastercard, Cash
-Developer / Owner| Roniel Nyke Gonzales
+<div align="center">OPEN LOADPAY HUB
 
----
+""Visit LoadPay Hub" (https://img.shields.io/badge/OPEN_WEBSITE-Click_Here-2563EB?style=for-the-badge&logo=netlify&logoColor=white)" (https://lambaconnect.netlify.app)
 
-🌐 Live Website
+Live URL
 
-<div align="center">Experience LoadPay Hub
-
-""Open Website" (https://img.shields.io/badge/OPEN_LOADPAY_HUB-Visit_Website-2563EB?style=for-the-badge&logo=netlify&logoColor=white)" (https://lambaconnect.netlify.app)
-
-Website: https://lambaconnect.netlify.app
+https://lambaconnect.netlify.app
 
 </div>---
 
-👨‍💻 Developer
+🛠️ PROJECT INFORMATION
 
-<div align="center">Roniel Nyke Gonzales
+Property| Details
+Project Name| LoadPay Hub
+Project Type| Web Application
+Deployment| Netlify
+Website| lambaconnect.netlify.app
+Service Categories| Load, Data, Bills, E-Wallet
+Developer| Roniel Nyke Gonzales
+
+---
+
+👨‍💻 DEVELOPER
+
+<div align="center">RONIEL NYKE GONZALES
 
 Web Developer · Full Stack Developer · System Developer
 
-</div>Developed and maintained by Roniel Nyke Gonzales.
+Building digital experiences through technology.
 
----
+</div>---
 
-📄 License
+📄 COPYRIGHT
 
-Copyright © 2026 LoadPay Hub.
+© 2026 LoadPay Hub. All rights reserved.
 
-All rights reserved.
+Developed by Roniel Nyke Gonzales.
 
 ---
 
@@ -142,8 +151,8 @@ All rights reserved.
 
 Digital Services, Closer to You.
 
-Made with dedication by Roniel Nyke Gonzales
+"🌐 Website" (https://lambaconnect.netlify.app)
 
-"Website" (https://lambaconnect.netlify.app) · "Back to Top" (#-loadpay-hub)
+⭐ Thank you for visiting this project!
 
 </div>
